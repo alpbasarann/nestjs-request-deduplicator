@@ -2,7 +2,7 @@
 export { RequestDeduplicatorModule } from './request-deduplicator.module';
 
 // Exceptions
-export { DuplicateRequestException } from './duplicate-request.exception';
+export { DuplicateRequestException } from './models/errors';
 
 // Guard & Interceptor
 export { RequestDeduplicatorGuard } from './request-deduplicator.guard';
@@ -11,30 +11,23 @@ export { RequestDeduplicatorInterceptor } from './request-deduplicator.intercept
 // Decorator
 export { RequestDeduplicator } from './request-deduplicator.decorator';
 
-// Abstract adapter — extend this to build your own storage backend
-export { DeduplicatorStorageAdapter } from './adapters/deduplicator-storage.adapter';
+// Abstract adapters (Contracts) — extend this to build your own storage backend
+export { DeduplicatorStorageAdapter, RequestDeduplicatorModuleOptions } from './adapters';
 
-// Types
-export { DeduplicatorState } from './types/deduplicator-state.enum';
-export type { DeduplicatorRecord } from './types/deduplicator-record.interface';
-export type {
-  RequestDeduplicatorModuleOptions,
-  RequestDeduplicatorOptions,
-  LoggerFn,
-} from './types/request-deduplicator-options.interface';
+// Models
+export { DeduplicatorState, LogLevel } from './enums';
+export type { DeduplicatorRecord, DeduplicatorRequest as RequestDeduplicatorOptions } from './models';
 
 // Constants (for advanced / custom-adapter use)
 export {
   REQUEST_DEDUPLICATOR_ADAPTER_TOKEN,
   REQUEST_DEDUPLICATOR_OPTIONS_TOKEN,
-  REQUEST_DEDUPLICATOR_METADATA_KEY,
-  DEFAULT_IN_PROGRESS_TTL_SECONDS,
-} from './request-deduplicator.constants';
+  REQUEST_DEDUPLICATOR_OPTIONS_METADATA_KEY,
+} from './constants';
 
 // Utilities (for testing / custom adapter authors)
-export { extractFields, extractFromRequest } from './field-extractor.util';
-export type { ExtractedFields, RequestLike } from './field-extractor.util';
-export { generateHash } from './hash.util';
+export { extractFields, getExtractedFields, generateHash } from './utils';
+export type { ExtractedFields, RequestLike } from './utils';
 
 // Validation helper (for custom integrations)
 export { validateRequestDeduplicatorOptions } from './request-deduplicator.module';

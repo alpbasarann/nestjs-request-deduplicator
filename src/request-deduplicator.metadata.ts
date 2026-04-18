@@ -1,10 +1,11 @@
-import { RequestDeduplicatorOptions } from './types/request-deduplicator-options.interface';
+import { DeduplicatorRequest } from "./models";
+
 
 /**
  * Type guard: returns true if `value` is a valid RequestDeduplicatorOptions object.
  * Used by the guard to skip routes that don't have the decorator applied.
  */
-export function isRequestDeduplicatorOptions(value: unknown): value is RequestDeduplicatorOptions {
+export function isRequestDeduplicatorOptions(value: unknown): value is DeduplicatorRequest {
   if (value === null || value === undefined || typeof value !== 'object' || Array.isArray(value)) {
     return false;
   }

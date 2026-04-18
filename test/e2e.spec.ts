@@ -20,10 +20,9 @@ import { RequestDeduplicatorModule } from '../src/request-deduplicator.module';
 import { RequestDeduplicatorGuard } from '../src/request-deduplicator.guard';
 import { RequestDeduplicatorInterceptor } from '../src/request-deduplicator.interceptor';
 import { RequestDeduplicator } from '../src/request-deduplicator.decorator';
-import { DeduplicatorState } from '../src/types/deduplicator-state.enum';
+import { DeduplicatorState } from '../src/enums';
 import { MockDeduplicatorAdapter } from './mocks/mock.adapter';
-import { extractFromRequest } from '../src/field-extractor.util';
-import { generateHash } from '../src/hash.util';
+import { getExtractedFields, generateHash } from '../src/utils';
 
 // ─── Test controller ──────────────────────────────────────────────────────────
 
@@ -72,7 +71,17 @@ describe('RequestDeduplicator E2E', () => {
     adapter = new MockDeduplicatorAdapter();
 
     @Module({
-      imports: [RequestDeduplicatorModule.forRoot({ adapter, tableName: 'deduplicator_test' })],
+      imports: [
+        RequestDeduplicatorModule.forRoot({
+          adapter,
+          tableName: 'deduplicator_test',
+          idFieldName: 'id',
+          deduplicationKeyFieldName: 'deduplication_key',
+          isGlobal: true,
+          inProgressTtl: 30,
+          logging: { mode: 'silent' },
+        }),
+      ],
       controllers: [TestController],
     })
     class TestAppModule {}
@@ -321,5 +330,5 @@ describe('RequestDeduplicator E2E', () => {
 });
 
 function generateTestHash(body: { accountId: string; amount: number }): string {
-  return generateHash(extractFromRequest({ headers: {}, body, query: {}, params: {} }, ['accountId', 'amount']));
+  return generateHash(getExtractedFields({ headers: {}, body, query: {}, params: {} }, { body: ['accountId', 'amount'] }));
 }

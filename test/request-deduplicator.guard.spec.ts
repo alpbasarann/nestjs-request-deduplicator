@@ -1,15 +1,16 @@
 import { Reflector } from '@nestjs/core';
 import { RequestDeduplicatorGuard } from '../src/request-deduplicator.guard';
-import { DuplicateRequestException } from '../src/duplicate-request.exception';
-import { DeduplicatorState } from '../src/types/deduplicator-state.enum';
-import { DeduplicatorRecord } from '../src/types/deduplicator-record.interface';
+import { DuplicateRequestException } from '../src/models/errors';
+
 import {
   REQUEST_DEDUPLICATOR_KEY_PROPERTY,
   REQUEST_DEDUPLICATOR_RECORD_PROPERTY,
-} from '../src/request-deduplicator.constants';
+} from '../src/constants';
 import { DeduplicatorStorageAdapter } from '../src/adapters/deduplicator-storage.adapter';
-import type { RequestDeduplicatorModuleOptions } from '../src/types/request-deduplicator-options.interface';
+
 import { MockDeduplicatorAdapter } from './mocks/mock.adapter';
+import { DeduplicatorState, LogLevel } from '../src';
+import type { DeduplicatorRecord, RequestDeduplicatorModuleOptions } from '../src';
 
 function makeRecord(overrides: Partial<DeduplicatorRecord> = {}): DeduplicatorRecord {
   return {
@@ -47,6 +48,11 @@ describe('RequestDeduplicatorGuard', () => {
   const moduleOptions: RequestDeduplicatorModuleOptions = {
     adapter: new MockDeduplicatorAdapter(),
     tableName: 'deduplicator',
+    idFieldName: 'id',
+    deduplicationKeyFieldName: 'deduplication_key',
+    isGlobal: true,
+    inProgressTtl: 30,
+    logging: { mode: 'silent' },
   };
 
   beforeEach(() => {
@@ -229,7 +235,7 @@ describe('RequestDeduplicatorGuard', () => {
     const loggerCalls: Array<[string, string]> = [];
     const guardWithLogger = new RequestDeduplicatorGuard(reflector, adapter, {
       ...moduleOptions,
-      logger: (level, message) => { loggerCalls.push([level, message]); },
+      logging: { mode: 'logged', logger: (level, message) => { loggerCalls.push([level, message]); } },
     });
 
     const ctx = makeContext(decoratorOptions, { accountId: 'a1' });
@@ -240,7 +246,7 @@ describe('RequestDeduplicatorGuard', () => {
     expect(result).toBe(true);
     expect(adapter.create).not.toHaveBeenCalled();
     expect(loggerCalls).toHaveLength(1);
-    expect(loggerCalls[0][0]).toBe('warn');
+    expect(loggerCalls[0][0]).toBe(LogLevel.WARN);
     expect(loggerCalls[0][1]).toMatch(/unknown state/i);
   });
 
@@ -251,7 +257,7 @@ describe('RequestDeduplicatorGuard', () => {
 
     const throwingGuard = new RequestDeduplicatorGuard(reflector, adapter, {
       ...moduleOptions,
-      logger: () => { throw new Error('Logger exploded'); },
+      logging: { mode: 'logged', logger: () => { throw new Error('Logger exploded'); } },
     });
 
     const ctx = makeContext(decoratorOptions);
@@ -286,7 +292,7 @@ describe('RequestDeduplicatorGuard', () => {
 
     const throwingGuard = new RequestDeduplicatorGuard(reflector, adapter, {
       ...moduleOptions,
-      logger: () => { throw new Error('Logger exploded'); },
+      logging: { mode: 'logged', logger: () => { throw new Error('Logger exploded'); } },
     });
 
     const ctx = makeContext(decoratorOptions);

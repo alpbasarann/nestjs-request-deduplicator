@@ -14,9 +14,10 @@ import {
   REQUEST_DEDUPLICATOR_ADAPTER_TOKEN,
   REQUEST_DEDUPLICATOR_KEY_PROPERTY,
   REQUEST_DEDUPLICATOR_OPTIONS_TOKEN,
-} from './request-deduplicator.constants';
-import { DeduplicatorState } from './types/deduplicator-state.enum';
-import { RequestDeduplicatorModuleOptions } from './types/request-deduplicator-options.interface';
+} from './constants';
+import { DeduplicatorState, LogLevel } from './enums';
+import type { RequestDeduplicatorModuleOptions } from './adapters';
+
 
 /**
  * Extract HTTP status from a thrown error without using instanceof,
@@ -102,18 +103,6 @@ export class RequestDeduplicatorInterceptor implements NestInterceptor {
     );
   }
 
-  private tryLog(
-    level: 'info' | 'warn' | 'error',
-    message: string,
-    meta?: Record<string, unknown>,
-  ): void {
-    try {
-      this.moduleOptions.logger?.(level, message, meta);
-    } catch {
-      // logger threw — ignore to avoid masking operational errors
-    }
-  }
-
   private updateStateFireAndForget(
     deduplicationKey: string,
     state: DeduplicatorState,
@@ -124,12 +113,27 @@ export class RequestDeduplicatorInterceptor implements NestInterceptor {
     void this.adapter
       .updateState(deduplicationKey, state, responseBody, responseStatus)
       .catch((err: unknown) => {
-        this.tryLog('error', failureMessage, {
+        this.log(LogLevel.ERROR, failureMessage, {
           deduplicationKey,
           error: err instanceof Error ? err.message : String(err),
           errorType: err instanceof Error ? err.constructor.name : typeof err,
           stack: err instanceof Error ? err.stack : undefined,
         });
       });
+  }
+
+  private log(level: LogLevel, message: string, meta?: Record<string, unknown>): void {
+    const { logging } = this.moduleOptions;
+    switch (logging.mode) {
+      case 'silent':
+        return;
+      case 'logged':
+        try {
+          logging.logger(level, message, meta);
+        } catch {
+          // logger threw — ignore to avoid masking operational errors
+        }
+        return;
+    }
   }
 }

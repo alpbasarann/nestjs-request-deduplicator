@@ -1,12 +1,13 @@
 import { of, throwError } from 'rxjs';
 import { RequestDeduplicatorInterceptor } from '../src/request-deduplicator.interceptor';
-import { DeduplicatorState } from '../src/types/deduplicator-state.enum';
-import { REQUEST_DEDUPLICATOR_KEY_PROPERTY } from '../src/request-deduplicator.constants';
+
+import { REQUEST_DEDUPLICATOR_KEY_PROPERTY } from '../src/constants';
 import { DeduplicatorStorageAdapter } from '../src/adapters/deduplicator-storage.adapter';
-import type { RequestDeduplicatorModuleOptions } from '../src/types/request-deduplicator-options.interface';
 import { MockDeduplicatorAdapter } from './mocks/mock.adapter';
 import type { ExecutionContext, CallHandler } from '@nestjs/common';
 import { HttpException, HttpStatus } from '@nestjs/common';
+import { DeduplicatorState } from '../src';
+import type { RequestDeduplicatorModuleOptions } from '../src';
 
 function makeContext(deduplicationKey?: string) {
   const mockRequest: Record<string, unknown> = { headers: {}, body: {} };
@@ -38,6 +39,11 @@ describe('RequestDeduplicatorInterceptor', () => {
   const moduleOptions: RequestDeduplicatorModuleOptions = {
     adapter: new MockDeduplicatorAdapter(),
     tableName: 'deduplicator',
+    idFieldName: 'id',
+    deduplicationKeyFieldName: 'deduplication_key',
+    isGlobal: true,
+    inProgressTtl: 30,
+    logging: { mode: 'silent' },
   };
 
   beforeEach(() => {
@@ -183,7 +189,7 @@ describe('RequestDeduplicatorInterceptor', () => {
 
     const throwingInterceptor = new RequestDeduplicatorInterceptor(adapter, {
       ...moduleOptions,
-      logger: () => { throw new Error('Logger exploded'); },
+      logging: { mode: 'logged', logger: () => { throw new Error('Logger exploded'); } },
     });
 
     const { ctx } = makeContext('test-key');
@@ -204,7 +210,7 @@ describe('RequestDeduplicatorInterceptor', () => {
 
     const throwingInterceptor = new RequestDeduplicatorInterceptor(adapter, {
       ...moduleOptions,
-      logger: () => { throw new Error('Logger exploded'); },
+      logging: { mode: 'logged', logger: () => { throw new Error('Logger exploded'); } },
     });
 
     const { ctx } = makeContext('test-key');

@@ -1,7 +1,7 @@
 /**
  * DeduplicatorStorageAdapter contract tests using MockDeduplicatorAdapter.
  */
-import { DeduplicatorState } from '../src/types/deduplicator-state.enum';
+import { DeduplicatorState } from '../src/enums';
 import { randomUUID } from 'crypto';
 import { MockDeduplicatorAdapter } from './mocks/mock.adapter';
 

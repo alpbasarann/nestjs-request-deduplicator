@@ -1,5 +1,7 @@
-import { DeduplicatorRecord } from '../types/deduplicator-record.interface';
-import { DeduplicatorState } from '../types/deduplicator-state.enum';
+import { DeduplicatorState } from '../enums';
+import type { DeduplicatorRecord } from '../models';
+
+
 
 /**
  * Abstract base class for all request-deduplicator storage adapters.

@@ -14,10 +14,10 @@ import {
   MAX_FIELDS_PER_DEDUPLICATOR,
   MAX_FIELD_PATH_LENGTH,
   FORBIDDEN_PATH_SEGMENTS,
-} from './request-deduplicator.constants';
-import { RequestDeduplicatorModuleOptions } from './types/request-deduplicator-options.interface';
+} from './constants';
 import { RequestDeduplicatorGuard } from './request-deduplicator.guard';
 import { RequestDeduplicatorInterceptor } from './request-deduplicator.interceptor';
+import { RequestDeduplicatorModuleOptions } from './adapters';
 
 function validateModuleOptions(options: RequestDeduplicatorModuleOptions): void {
   if (!TABLE_NAME_REGEX.test(options.tableName)) {
@@ -33,10 +33,16 @@ function validateModuleOptions(options: RequestDeduplicatorModuleOptions): void 
     );
   }
 
-  if (options.idFieldName !== undefined) {
-    if (typeof options.idFieldName !== 'string' || options.idFieldName.trim() === '') {
-      throw new Error('idFieldName must be a non-empty string when provided');
-    }
+  if (options.idFieldName.trim() === '') {
+    throw new Error('idFieldName must be a non-empty string');
+  }
+
+  if (options.deduplicationKeyFieldName.trim() === '') {
+    throw new Error('deduplicationKeyFieldName must be a non-empty string');
+  }
+
+  if (options.inProgressTtl <= 0) {
+    throw new Error('inProgressTtl must be a positive number of seconds');
   }
 }
 
@@ -92,7 +98,7 @@ export class RequestDeduplicatorModule implements OnModuleInit, OnModuleDestroy 
 
     return {
       module: RequestDeduplicatorModule,
-      global: options.global ?? true,
+      global: options.isGlobal,
       providers: [
         { provide: REQUEST_DEDUPLICATOR_ADAPTER_TOKEN, useValue: options.adapter },
         { provide: REQUEST_DEDUPLICATOR_OPTIONS_TOKEN, useValue: options },

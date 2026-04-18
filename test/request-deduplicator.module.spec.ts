@@ -1,10 +1,15 @@
 import { RequestDeduplicatorModule, validateRequestDeduplicatorOptions } from '../src/request-deduplicator.module';
-import { TABLE_NAME_REGEX } from '../src/request-deduplicator.constants';
+import { TABLE_NAME_REGEX } from '../src/constants';
 import { MockDeduplicatorAdapter } from './mocks/mock.adapter';
 
 const validOptions = {
   adapter: new MockDeduplicatorAdapter(),
   tableName: 'deduplicator',
+  idFieldName: 'id',
+  deduplicationKeyFieldName: 'deduplication_key',
+  isGlobal: true,
+  inProgressTtl: 30,
+  logging: { mode: 'silent' as const },
 };
 
 describe('RequestDeduplicatorModule.forRoot()', () => {

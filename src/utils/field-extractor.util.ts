@@ -2,20 +2,23 @@ import {
   FORBIDDEN_PATH_SEGMENTS,
   MAX_FIELD_PATH_LENGTH,
   MAX_PATH_SEGMENT_LENGTH,
-} from './request-deduplicator.constants';
+} from '../constants';
+import type { DeduplicatorRequest } from '../models';
 
 export interface ExtractedFields {
   [key: string]: unknown;
 }
 
 /**
- * Represents an incoming HTTP request (minimal surface we need).
+ * Minimal request surface we need. `body`/`query`/`params` are `unknown` so
+ * express's native `Request` (with `ParsedQs` / `ParamsDictionary` / `any` body)
+ * is directly assignable — `safeGet` handles the traversal internally.
  */
 export interface RequestLike {
   headers: Record<string, string | string[] | undefined>;
   body?: unknown;
-  query?: Record<string, unknown>;
-  params?: Record<string, unknown>;
+  query?: unknown;
+  params?: unknown;
 }
 
 /**
@@ -67,22 +70,19 @@ function safeGet(obj: unknown, segments: string[]): unknown {
 }
 
 /**
- * Extract deduplication fields directly from the incoming request.
+ * Pick deduplication fields from the incoming request according to the
+ * decorator options, and return a deterministically-sorted map ready for hashing.
  *
  * - `body` fields support dot-notation for nested access (e.g. 'user.id')
  * - `headers` are looked up case-insensitively
  * - `query` fields are picked from the parsed query string (dot-notation supported)
  * - `params` fields are picked from route parameters (e.g. ':recordId')
- *
- * The returned object is deterministically sorted, ready for hashing.
  */
-export function extractFromRequest(
+export function getExtractedFields(
   request: RequestLike,
-  body: string[] = [],
-  headers: string[] = [],
-  query: string[] = [],
-  params: string[] = [],
+  options: DeduplicatorRequest = {},
 ): ExtractedFields {
+  const { body = [], headers = [], query = [], params = [] } = options;
   const result: Record<string, unknown> = {};
 
   for (const field of body) {
@@ -111,8 +111,34 @@ export function extractFromRequest(
 }
 
 /**
- * Validates all keys in a pre-built field map and returns a deterministically
- * sorted copy suitable for hashing.
+ * Prepare a pre-built field map for deterministic hashing — validates every key
+ * and returns an alphabetically-sorted copy.
+ *
+ * Use this when you're deduplicating a **non-HTTP context** where
+ * `getExtractedFields` doesn't fit — e.g.:
+ *   - Queue consumers (RabbitMQ / Kafka / SQS)
+ *   - gRPC / WebSocket / scheduled-job handlers
+ *   - Custom `DeduplicatorStorageAdapter` implementations that build keys
+ *     outside the Guard pipeline
+ *   - Dedup key maps whose fields come from user input or plugins (dynamic keys)
+ *
+ * Pair with `generateHash` to get the **same hash guarantees the Guard
+ * provides**: deterministic output (sorted keys → identical hash regardless
+ * of input property order) and prototype-pollution safety (keys like
+ * `__proto__`, `constructor`, `prototype` are rejected).
+ *
+ * @example
+ * import { extractFields, generateHash } from 'nestjs-request-deduplicator';
+ *
+ * // A queue consumer building its own dedup key
+ * const hash = generateHash(extractFields({
+ *   userId: message.user,
+ *   orderId: message.order,
+ *   correlationId: message.traceId,
+ * }));
+ *
+ * @throws {Error} if any key contains a forbidden segment (`__proto__`, `constructor`, `prototype`)
+ * @throws {RangeError} if any key exceeds the maximum length
  */
 export function extractFields(resolvedData: Record<string, unknown>): ExtractedFields {
   for (const key of Object.keys(resolvedData)) {

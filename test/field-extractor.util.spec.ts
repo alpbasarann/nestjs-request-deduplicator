@@ -1,14 +1,14 @@
-import { extractFromRequest, extractFields, RequestLike } from '../src/field-extractor.util';
+import { getExtractedFields, extractFields, RequestLike } from '../src/utils';
 
 function makeRequest(overrides: Partial<RequestLike> = {}): RequestLike {
   return { headers: {}, body: {}, query: {}, params: {}, ...overrides };
 }
 
-describe('extractFromRequest', () => {
+describe('getExtractedFields', () => {
   describe('body extraction', () => {
     it('picks specified fields from request.body under body.* keys', () => {
       const req = makeRequest({ body: { accountId: 'a1', resourceId: 'r1', note: 'ignore me' } });
-      const result = extractFromRequest(req, ['accountId', 'resourceId']);
+      const result = getExtractedFields(req, { body: ['accountId', 'resourceId'] });
       expect(result['body.accountId']).toBe('a1');
       expect(result['body.resourceId']).toBe('r1');
       expect(result['body.note']).toBeUndefined();
@@ -16,25 +16,25 @@ describe('extractFromRequest', () => {
 
     it('supports dot-notation for nested body fields', () => {
       const req = makeRequest({ body: { user: { id: 'u1', role: 'admin' } } });
-      const result = extractFromRequest(req, ['user.id']);
+      const result = getExtractedFields(req, { body: ['user.id'] });
       expect(result['body.user.id']).toBe('u1');
     });
 
     it('returns undefined for missing body fields', () => {
       const req = makeRequest({ body: { accountId: 'a1' } });
-      const result = extractFromRequest(req, ['accountId', 'missing']);
+      const result = getExtractedFields(req, { body: ['accountId', 'missing'] });
       expect(result['body.missing']).toBeUndefined();
     });
 
     it('returns undefined for missing intermediate nested field', () => {
       const req = makeRequest({ body: { user: null } });
-      const result = extractFromRequest(req, ['user.id']);
+      const result = getExtractedFields(req, { body: ['user.id'] });
       expect(result['body.user.id']).toBeUndefined();
     });
 
     it('preserves null values (distinct from undefined)', () => {
       const req = makeRequest({ body: { amount: null } });
-      const result = extractFromRequest(req, ['amount']);
+      const result = getExtractedFields(req, { body: ['amount'] });
       expect(result['body.amount']).toBeNull();
     });
   });
@@ -42,19 +42,19 @@ describe('extractFromRequest', () => {
   describe('header extraction', () => {
     it('picks specified headers under header.* keys', () => {
       const req = makeRequest({ headers: { 'x-request-id': 'abc', 'x-correlation-id': 'tok' } });
-      const result = extractFromRequest(req, [], ['x-request-id']);
+      const result = getExtractedFields(req, { headers: ['x-request-id'] });
       expect(result['header.x-request-id']).toBe('abc');
     });
 
     it('normalizes header lookup to lowercase', () => {
       const req = makeRequest({ headers: { 'x-request-id': 'abc' } });
-      const result = extractFromRequest(req, [], ['X-Request-Id']);
+      const result = getExtractedFields(req, { headers: ['X-Request-Id'] });
       expect(result['header.X-Request-Id']).toBe('abc');
     });
 
     it('returns undefined for missing headers', () => {
       const req = makeRequest({ headers: {} });
-      const result = extractFromRequest(req, [], ['x-missing']);
+      const result = getExtractedFields(req, { headers: ['x-missing'] });
       expect(result['header.x-missing']).toBeUndefined();
     });
   });
@@ -62,20 +62,20 @@ describe('extractFromRequest', () => {
   describe('query extraction', () => {
     it('picks specified query params under query.* keys', () => {
       const req = makeRequest({ query: { tenantId: 'tenant-1', version: '2' } });
-      const result = extractFromRequest(req, [], [], ['tenantId', 'version']);
+      const result = getExtractedFields(req, { query: ['tenantId', 'version'] });
       expect(result['query.tenantId']).toBe('tenant-1');
       expect(result['query.version']).toBe('2');
     });
 
     it('returns undefined for missing query params', () => {
       const req = makeRequest({ query: {} });
-      const result = extractFromRequest(req, [], [], ['missing']);
+      const result = getExtractedFields(req, { query: ['missing'] });
       expect(result['query.missing']).toBeUndefined();
     });
 
     it('supports dot-notation for nested query objects', () => {
       const req = makeRequest({ query: { filter: { status: 'active' } as unknown } });
-      const result = extractFromRequest(req, [], [], ['filter.status']);
+      const result = getExtractedFields(req, { query: ['filter.status'] });
       expect(result['query.filter.status']).toBe('active');
     });
   });
@@ -83,14 +83,14 @@ describe('extractFromRequest', () => {
   describe('params extraction', () => {
     it('picks specified route params under param.* keys', () => {
       const req = makeRequest({ params: { recordId: 'REC-123', accountId: 'a-1' } });
-      const result = extractFromRequest(req, [], [], [], ['recordId', 'accountId']);
+      const result = getExtractedFields(req, { params: ['recordId', 'accountId'] });
       expect(result['param.recordId']).toBe('REC-123');
       expect(result['param.accountId']).toBe('a-1');
     });
 
     it('returns undefined for missing route params', () => {
       const req = makeRequest({ params: {} });
-      const result = extractFromRequest(req, [], [], [], ['missing']);
+      const result = getExtractedFields(req, { params: ['missing'] });
       expect(result['param.missing']).toBeUndefined();
     });
   });
@@ -103,7 +103,12 @@ describe('extractFromRequest', () => {
         query: { version: '2' },
         params: { recordId: 'REC-1' },
       });
-      const result = extractFromRequest(req, ['accountId', 'amount'], ['x-request-id'], ['version'], ['recordId']);
+      const result = getExtractedFields(req, {
+        body: ['accountId', 'amount'],
+        headers: ['x-request-id'],
+        query: ['version'],
+        params: ['recordId'],
+      });
       expect(result['body.accountId']).toBe('a1');
       expect(result['body.amount']).toBe(99);
       expect(result['header.x-request-id']).toBe('req-42');
@@ -117,7 +122,7 @@ describe('extractFromRequest', () => {
         headers: { 'accountid': 'from-header' },
         body: { accountId: 'from-body' },
       });
-      const result = extractFromRequest(req, ['accountId'], ['accountId']);
+      const result = getExtractedFields(req, { body: ['accountId'], headers: ['accountId'] });
       expect(result['body.accountId']).toBe('from-body');
       expect(result['header.accountId']).toBe('from-header');
     });
@@ -131,7 +136,12 @@ describe('extractFromRequest', () => {
         query: { page: '1' },
         params: { id: '42' },
       });
-      const result = extractFromRequest(req, ['z', 'a'], ['x-request-id'], ['page'], ['id']);
+      const result = getExtractedFields(req, {
+        body: ['z', 'a'],
+        headers: ['x-request-id'],
+        query: ['page'],
+        params: ['id'],
+      });
       const keys = Object.keys(result);
       expect(keys).toEqual([...keys].sort());
     });
@@ -139,43 +149,43 @@ describe('extractFromRequest', () => {
 
   describe('security: prototype pollution prevention', () => {
     it('rejects __proto__ in a body field name', () => {
-      expect(() => extractFromRequest(makeRequest(), ['__proto__'])).toThrow(/Forbidden key/);
+      expect(() => getExtractedFields(makeRequest(), { body: ['__proto__'] })).toThrow(/Forbidden key/);
     });
 
     it('rejects constructor in a body field name', () => {
-      expect(() => extractFromRequest(makeRequest(), ['constructor'])).toThrow(/Forbidden key/);
+      expect(() => getExtractedFields(makeRequest(), { body: ['constructor'] })).toThrow(/Forbidden key/);
     });
 
     it('rejects forbidden segment in a header name', () => {
-      expect(() => extractFromRequest(makeRequest(), [], ['__proto__'])).toThrow(/Forbidden key/);
+      expect(() => getExtractedFields(makeRequest(), { headers: ['__proto__'] })).toThrow(/Forbidden key/);
     });
 
     it('rejects forbidden segment in a query field name', () => {
-      expect(() => extractFromRequest(makeRequest(), [], [], ['__proto__'])).toThrow(/Forbidden key/);
+      expect(() => getExtractedFields(makeRequest(), { query: ['__proto__'] })).toThrow(/Forbidden key/);
     });
 
     it('rejects forbidden segment in a params field name', () => {
-      expect(() => extractFromRequest(makeRequest(), [], [], [], ['__proto__'])).toThrow(/Forbidden key/);
+      expect(() => getExtractedFields(makeRequest(), { params: ['__proto__'] })).toThrow(/Forbidden key/);
     });
 
     it('rejects forbidden segment anywhere in a dot-path', () => {
-      expect(() => extractFromRequest(makeRequest(), ['user.__proto__'])).toThrow(/Forbidden key/);
+      expect(() => getExtractedFields(makeRequest(), { body: ['user.__proto__'] })).toThrow(/Forbidden key/);
     });
 
     it('rejects field keys that are too long', () => {
-      expect(() => extractFromRequest(makeRequest(), ['a'.repeat(257)])).toThrow(/exceeds maximum length/);
+      expect(() => getExtractedFields(makeRequest(), { body: ['a'.repeat(257)] })).toThrow(/exceeds maximum length/);
     });
   });
 
   describe('edge cases', () => {
-    it('returns empty object when all source arrays are empty', () => {
-      expect(extractFromRequest(makeRequest())).toEqual({});
+    it('returns empty object when no field lists are provided', () => {
+      expect(getExtractedFields(makeRequest())).toEqual({});
     });
 
     it('returns a new sorted object on each call (no mutation)', () => {
       const req = makeRequest({ body: { b: 2, a: 1 } });
-      const r1 = extractFromRequest(req, ['b', 'a']);
-      const r2 = extractFromRequest(req, ['b', 'a']);
+      const r1 = getExtractedFields(req, { body: ['b', 'a'] });
+      const r2 = getExtractedFields(req, { body: ['b', 'a'] });
       expect(r1).toEqual(r2);
       expect(r1).not.toBe(r2);
     });

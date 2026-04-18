@@ -1,5 +1,4 @@
-import { generateHash } from '../src/hash.util';
-import { ExtractedFields } from '../src/field-extractor.util';
+import { generateHash, ExtractedFields } from '../src/utils';
 
 describe('generateHash', () => {
   it('returns a 64-character hex string (SHA-256)', () => {

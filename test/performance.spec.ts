@@ -1,5 +1,4 @@
-import { extractFromRequest, RequestLike } from '../src/field-extractor.util';
-import { generateHash } from '../src/hash.util';
+import { getExtractedFields, generateHash, RequestLike } from '../src/utils';
 
 const ITERATIONS = 5_000;
 
@@ -10,10 +9,10 @@ function measureMs(fn: () => void, iterations: number): number {
   return Number(end - start) / 1e6 / iterations;
 }
 
-describe('performance: extractFromRequest', () => {
+describe('performance: getExtractedFields', () => {
   it('small request (body + header) averages < 0.5 ms per call', () => {
     const req: RequestLike = { headers: { 'x-request-id': 'abc' }, body: { accountId: 'a1' }, query: {}, params: {} };
-    const avg = measureMs(() => extractFromRequest(req, ['accountId'], ['x-request-id']), ITERATIONS);
+    const avg = measureMs(() => getExtractedFields(req, { body: ['accountId'], headers: ['x-request-id'] }), ITERATIONS);
     expect(avg).toBeLessThan(0.5);
   });
 
@@ -22,13 +21,22 @@ describe('performance: extractFromRequest', () => {
     for (let i = 0; i < 50; i++) body[`field${i}`] = `value-${i}`;
     const req: RequestLike = { headers: {}, body, query: {}, params: {} };
     const fields = Array.from({ length: 50 }, (_, i) => `field${i}`);
-    const avg = measureMs(() => extractFromRequest(req, fields), ITERATIONS);
+    const avg = measureMs(() => getExtractedFields(req, { body: fields }), ITERATIONS);
     expect(avg).toBeLessThan(2);
   });
 
   it('missing fields averages < 0.5 ms per call', () => {
     const req: RequestLike = { headers: {}, body: {}, query: {}, params: {} };
-    const avg = measureMs(() => extractFromRequest(req, ['missing1'], ['x-absent'], ['q-missing'], ['p-missing']), ITERATIONS);
+    const avg = measureMs(
+      () =>
+        getExtractedFields(req, {
+          body: ['missing1'],
+          headers: ['x-absent'],
+          query: ['q-missing'],
+          params: ['p-missing'],
+        }),
+      ITERATIONS,
+    );
     expect(avg).toBeLessThan(0.5);
   });
 });
@@ -56,7 +64,7 @@ describe('performance: generateHash', () => {
   });
 });
 
-describe('performance: extractFromRequest + generateHash combined (hot path)', () => {
+describe('performance: getExtractedFields + generateHash combined (hot path)', () => {
   it('typical request (body + headers + query + params) averages < 1 ms per call', () => {
     const req: RequestLike = {
       headers: { 'x-request-id': 'req-42', 'x-correlation-id': 'corr-abc' },
@@ -65,14 +73,13 @@ describe('performance: extractFromRequest + generateHash combined (hot path)', (
       params: { recordId: 'REC-1' },
     };
     const avg = measureMs(() => {
-      const extracted = extractFromRequest(
-        req,
-        ['accountId', 'resourceId', 'amount'],
-        ['x-request-id', 'x-correlation-id'],
-        ['version'],
-        ['recordId'],
-      );
-      generateHash(extracted);
+      const dedupFields = getExtractedFields(req, {
+        body: ['accountId', 'resourceId', 'amount'],
+        headers: ['x-request-id', 'x-correlation-id'],
+        query: ['version'],
+        params: ['recordId'],
+      });
+      generateHash(dedupFields);
     }, ITERATIONS);
     expect(avg).toBeLessThan(1);
   });

@@ -13,8 +13,8 @@
  */
 import { randomUUID } from 'crypto';
 import { DeduplicatorStorageAdapter } from '../src/adapters/deduplicator-storage.adapter';
-import { DeduplicatorRecord } from '../src/types/deduplicator-record.interface';
-import { DeduplicatorState } from '../src/types/deduplicator-state.enum';
+import type { DeduplicatorRecord } from '../src/models';
+import { DeduplicatorState } from '../src/enums';
 
 function makeRecord(overrides: Partial<Omit<DeduplicatorRecord, 'createdAt'>> = {}): Omit<DeduplicatorRecord, 'createdAt'> {
   return {
