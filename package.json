@@ -1,0 +1,91 @@
+{
+  "name": "nestjs-request-deduplicator",
+  "version": "1.1.0",
+  "description": "Production-grade NestJS decorator-based request deduplication. Prevents duplicate handler execution with pluggable storage adapters and zero database dependencies.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "scripts": {
+    "prepare": "npm run build",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "jest",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts",
+    "audit:check": "npm audit --audit-level=high"
+  },
+  "keywords": [
+    "nestjs",
+    "idempotency",
+    "request-deduplicator",
+    "deduplication",
+    "typescript",
+    "guard",
+    "interceptor",
+    "decorator",
+    "at-most-once",
+    "distributed-systems"
+  ],
+  "author": "alpbasarann",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alpbasarann/nestjs-request-deduplicator.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alpbasarann/nestjs-request-deduplicator/issues"
+  },
+  "homepage": "https://github.com/alpbasarann/nestjs-request-deduplicator#readme",
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^10.0.0 || ^11.0.0",
+    "reflect-metadata": "^0.1.13 || ^0.2.0",
+    "rxjs": "^7.0.0"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.1.18",
+    "@nestjs/core": "^11.1.18",
+    "@nestjs/platform-express": "^11.1.18",
+    "@nestjs/testing": "^11.1.18",
+    "@types/express": "^5.0.6",
+    "@types/jest": "^29.0.0",
+    "@types/node": "^20.0.0",
+    "@types/supertest": "^7.2.0",
+    "jest": "^29.0.0",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.0.0",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "jest": {
+    "moduleFileExtensions": [
+      "js",
+      "json",
+      "ts"
+    ],
+    "rootDir": ".",
+    "testRegex": ".*\\.spec\\.ts$",
+    "transform": {
+      "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "collectCoverageFrom": [
+      "src/**/*.(t|j)s"
+    ],
+    "coverageDirectory": "./coverage",
+    "testEnvironment": "node"
+  }
+}

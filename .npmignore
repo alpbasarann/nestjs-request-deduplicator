@@ -1,0 +1,26 @@
+# Test files
+test/
+**/*.spec.ts
+**/*.spec.js
+**/*.spec.d.ts
+
+# Source TypeScript (keep compiled output and .d.ts)
+src/
+
+# Source maps (not needed for consumers)
+dist/**/*.js.map
+dist/**/*.d.ts.map
+
+# Dev / config
+tsconfig.json
+tsconfig.build.json
+jest.config.*
+.eslintrc*
+.prettierrc*
+.gitignore
+coverage/
+**/*.tsbuildinfo
+dist/*.tsbuildinfo
+
+# Node
+node_modules/
